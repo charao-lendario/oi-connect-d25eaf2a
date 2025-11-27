@@ -473,7 +473,19 @@ export default function NewAgreement() {
                 >
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={submitting}>
+                <Button
+                  type="button"
+                  disabled={submitting}
+                  onClick={form.handleSubmit(
+                    onSubmit,
+                    (errors) => {
+                      console.log("[NewAgreement] Erros de validação", errors);
+                      toast.error(
+                        "Verifique os campos obrigatórios e selecione ao menos um participante."
+                      );
+                    }
+                  )}
+                >
                   {submitting ? "Criando..." : "Criar Combinado"}
                 </Button>
               </div>
