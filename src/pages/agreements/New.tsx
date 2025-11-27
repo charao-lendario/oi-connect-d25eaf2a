@@ -51,6 +51,8 @@ export default function NewAgreement() {
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
   const [attachments, setAttachments] = useState<AttachmentFile[]>([]);
 
+  console.log("[NewAgreement] render", { user, canCreateAgreements, authLoading, profileLoading });
+
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -73,9 +75,10 @@ export default function NewAgreement() {
 
   useEffect(() => {
     if (!profileLoading && !authLoading && !canCreateAgreements) {
+      console.log("[NewAgreement] redirect: user cannot create agreements", { userId: user?.id, canCreateAgreements });
       navigate("/agreements");
     }
-  }, [canCreateAgreements, profileLoading, authLoading, navigate]);
+  }, [canCreateAgreements, profileLoading, authLoading, navigate, user]);
 
   useEffect(() => {
     if (user) {
