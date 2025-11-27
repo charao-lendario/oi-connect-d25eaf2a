@@ -17,6 +17,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Calendar, Clock, Users, Plus, X } from "lucide-react";
 import { toast } from "sonner";
+import { ChecklistSection, ChecklistItem } from "@/components/agreements/ChecklistSection";
+import { AttachmentsSection, AttachmentFile } from "@/components/agreements/AttachmentsSection";
 
 const formSchema = z.object({
   title: z.string().min(3, "Título deve ter no mínimo 3 caracteres").max(200),
@@ -46,6 +48,8 @@ export default function NewAgreement() {
   const [loadingProfiles, setLoadingProfiles] = useState(true);
   const [tagInput, setTagInput] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
+  const [attachments, setAttachments] = useState<AttachmentFile[]>([]);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -100,11 +104,9 @@ export default function NewAgreement() {
   const onSubmit = async (data: FormData) => {
     if (!user) return;
 
-    console.log("[NewAgreement] Enviando formulário", { data, userId: user.id });
-
     setSubmitting(true);
     try {
-      // Criar o combinado
+      // 1. Criar o combinado
       const { data: agreement, error: agreementError } = await supabase
         .from("agreements")
         .insert({
@@ -121,52 +123,88 @@ export default function NewAgreement() {
         .select()
         .single();
 
-      console.log("[NewAgreement] Resultado insert agreements", {
-        agreement,
-        agreementError,
-      });
-
       if (agreementError || !agreement) {
-        console.error("Erro ao criar registro em agreements:", agreementError);
-        throw new Error(
-          agreementError?.message ||
-            "Falha ao criar o combinado na tabela agreements."
-        );
+        throw new Error(agreementError?.message || "Falha ao criar o combinado");
       }
 
-      // Adicionar participantes
+      // 2. Adicionar participantes
       const participantsData = data.participants.map((participantId) => ({
         agreement_id: agreement.id,
         user_id: participantId,
         status: "PENDING" as const,
       }));
 
-      console.log("[NewAgreement] Inserindo participantes", participantsData);
-
       const { error: participantsError } = await supabase
         .from("agreement_participants")
         .insert(participantsData);
 
-      console.log("[NewAgreement] Resultado insert participants", {
-        participantsError,
-      });
-
       if (participantsError) {
-        console.error("Erro ao adicionar participantes:", participantsError);
-        throw new Error(
-          participantsError?.message ||
-            "Falha ao adicionar participantes ao combinado."
-        );
+        throw new Error(participantsError?.message || "Falha ao adicionar participantes");
       }
+
+      // 3. Adicionar checklist (se houver)
+      if (checklistItems.length > 0) {
+        const checklistData = checklistItems.map((item) => ({
+          agreement_id: agreement.id,
+          description: item.description,
+          order_index: item.order_index,
+        }));
+
+        const { error: checklistError } = await supabase
+          .from("checklist_items")
+          .insert(checklistData);
+
+        if (checklistError) {
+          console.error("Erro ao adicionar checklist:", checklistError);
+          // Não falha a criação, apenas avisa
+          toast.error("Combinado criado, mas houve erro ao adicionar checklist");
+        }
+      }
+
+      // 4. Upload de anexos (se houver)
+      if (attachments.length > 0) {
+        for (const attachment of attachments) {
+          const fileExt = attachment.file.name.split('.').pop();
+          const fileName = `${user.id}/${agreement.id}/${crypto.randomUUID()}.${fileExt}`;
+
+          const { error: uploadError } = await supabase.storage
+            .from('agreement-attachments')
+            .upload(fileName, attachment.file);
+
+          if (uploadError) {
+            console.error("Erro ao fazer upload:", uploadError);
+            continue;
+          }
+
+          // Registrar anexo na tabela
+          await supabase.from('attachments').insert({
+            agreement_id: agreement.id,
+            storage_path: fileName,
+            file_name: attachment.file.name,
+            file_size: attachment.file.size,
+            mime_type: attachment.file.type,
+            uploaded_by_id: user.id,
+          });
+        }
+      }
+
+      // 5. Criar notificações para participantes
+      const notifications = data.participants.map((participantId) => ({
+        user_id: participantId,
+        type: "AGREEMENT_CREATED" as const,
+        title: "Novo Combinado",
+        message: `Você foi adicionado ao combinado: ${data.title}`,
+        related_type: "agreement",
+        related_id: agreement.id,
+      }));
+
+      await supabase.from('notifications').insert(notifications);
+
       toast.success("Combinado criado com sucesso!");
       navigate("/agreements");
     } catch (error: any) {
       console.error("Erro ao criar combinado:", error);
-      toast.error(
-        `Erro ao criar combinado: ${
-          error?.message || "Tente novamente e copie o erro do console."
-        }`
-      );
+      toast.error(`Erro ao criar combinado: ${error?.message}`);
     } finally {
       setSubmitting(false);
     }
@@ -463,6 +501,16 @@ export default function NewAgreement() {
                   )}
                 </CardContent>
               </Card>
+
+              <ChecklistSection
+                items={checklistItems}
+                onChange={setChecklistItems}
+              />
+
+              <AttachmentsSection
+                files={attachments}
+                onChange={setAttachments}
+              />
 
               <div className="flex gap-4 justify-end">
                 <Button

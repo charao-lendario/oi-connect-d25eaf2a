@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
+import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
 import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +13,9 @@ export default function AgreementsIndex() {
   const { user, loading: authLoading } = useAuth();
   const { canCreateAgreements, loading: profileLoading } = useProfile();
   const navigate = useNavigate();
+
+  // Hook para notificações em tempo real
+  useRealtimeNotifications(user?.id);
 
   useEffect(() => {
     if (!authLoading && !user) {
