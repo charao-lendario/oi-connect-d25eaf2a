@@ -136,9 +136,9 @@ export default function NewAgreement() {
 
       toast.success("Combinado criado com sucesso!");
       navigate("/agreements");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao criar combinado:", error);
-      toast.error("Erro ao criar combinado. Tente novamente.");
+      toast.error(`Erro ao criar combinado: ${error?.message || "Tente novamente."}`);
     } finally {
       setSubmitting(false);
     }
