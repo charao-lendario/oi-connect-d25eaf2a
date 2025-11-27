@@ -99,7 +99,9 @@ export default function NewAgreement() {
 
   const onSubmit = async (data: FormData) => {
     if (!user) return;
-    
+
+    console.log("[NewAgreement] Enviando formulário", { data, userId: user.id });
+
     setSubmitting(true);
     try {
       // Criar o combinado
@@ -119,6 +121,11 @@ export default function NewAgreement() {
         .select()
         .single();
 
+      console.log("[NewAgreement] Resultado insert agreements", {
+        agreement,
+        agreementError,
+      });
+
       if (agreementError || !agreement) {
         console.error("Erro ao criar registro em agreements:", agreementError);
         throw new Error(
@@ -134,9 +141,15 @@ export default function NewAgreement() {
         status: "PENDING" as const,
       }));
 
+      console.log("[NewAgreement] Inserindo participantes", participantsData);
+
       const { error: participantsError } = await supabase
         .from("agreement_participants")
         .insert(participantsData);
+
+      console.log("[NewAgreement] Resultado insert participants", {
+        participantsError,
+      });
 
       if (participantsError) {
         console.error("Erro ao adicionar participantes:", participantsError);
@@ -149,12 +162,15 @@ export default function NewAgreement() {
       navigate("/agreements");
     } catch (error: any) {
       console.error("Erro ao criar combinado:", error);
-      toast.error(`Erro ao criar combinado: ${error?.message || "Tente novamente."}`);
+      toast.error(
+        `Erro ao criar combinado: ${
+          error?.message || "Tente novamente e copie o erro do console."
+        }`
+      );
     } finally {
       setSubmitting(false);
     }
   };
-
   const addTag = () => {
     if (tagInput.trim()) {
       const currentTags = form.getValues("tags");
