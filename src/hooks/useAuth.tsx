@@ -30,10 +30,14 @@ export function useAuth() {
   }, []);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    navigate("/auth");
+    try {
+      await supabase.auth.signOut({ scope: "local" });
+    } catch (error) {
+      console.error("Erro ao sair da conta:", error);
+    } finally {
+      navigate("/auth");
+    }
   };
-
   return {
     user,
     session,
