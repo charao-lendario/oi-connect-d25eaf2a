@@ -255,7 +255,18 @@ export default function NewAgreement() {
           </div>
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form
+              onSubmit={form.handleSubmit(
+                onSubmit,
+                (errors) => {
+                  console.log("[NewAgreement] Erros de validação", errors);
+                  toast.error(
+                    "Verifique os campos obrigatórios e selecione ao menos um participante."
+                  );
+                }
+              )}
+              className="space-y-6"
+            >
               <Card>
                 <CardHeader>
                   <CardTitle>Informações Básicas</CardTitle>
@@ -522,17 +533,8 @@ export default function NewAgreement() {
                   Cancelar
                 </Button>
                 <Button
-                  type="button"
+                  type="submit"
                   disabled={submitting}
-                  onClick={form.handleSubmit(
-                    onSubmit,
-                    (errors) => {
-                      console.log("[NewAgreement] Erros de validação", errors);
-                      toast.error(
-                        "Verifique os campos obrigatórios e selecione ao menos um participante."
-                      );
-                    }
-                  )}
                 >
                   {submitting ? "Criando..." : "Criar Combinado"}
                 </Button>
