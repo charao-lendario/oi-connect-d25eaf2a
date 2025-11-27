@@ -1,14 +1,19 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useProfile } from "@/hooks/useProfile";
+import { Header } from "@/components/layout/Header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { LogOut, Plus, CheckSquare, FileText, Bell } from "lucide-react";
+import { Plus, CheckSquare, FileText, AlertCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Dashboard() {
-  const { user, loading, signOut } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const { canCreateAgreements, isColaborador, loading: profileLoading } = useProfile();
   const navigate = useNavigate();
+  
+  const loading = authLoading || profileLoading;
 
   useEffect(() => {
     if (!loading && !user) {
@@ -18,15 +23,18 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen p-8">
-        <div className="max-w-7xl mx-auto space-y-8">
-          <Skeleton className="h-12 w-64" />
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            {[1, 2, 3, 4].map((i) => (
-              <Skeleton key={i} className="h-32" />
-            ))}
+      <div className="min-h-screen bg-gradient-to-br from-background via-secondary/5 to-primary/5">
+        <Header />
+        <main className="container py-8">
+          <div className="space-y-8">
+            <Skeleton className="h-12 w-64" />
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+              {[1, 2, 3, 4].map((i) => (
+                <Skeleton key={i} className="h-32" />
+              ))}
+            </div>
           </div>
-        </div>
+        </main>
       </div>
     );
   }
@@ -35,28 +43,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-secondary/5 to-primary/5">
-      {/* Header */}
-      <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-16 items-center justify-between">
-          <div className="flex items-center gap-6">
-            <h1 className="text-2xl font-bold">Combinados</h1>
-            <nav className="hidden md:flex gap-6">
-              <Button variant="ghost">Dashboard</Button>
-              <Button variant="ghost">Meus Combinados</Button>
-              <Button variant="ghost">Criar Novo</Button>
-            </nav>
-          </div>
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon">
-              <Bell className="h-5 w-5" />
-            </Button>
-            <Button variant="ghost" onClick={signOut}>
-              <LogOut className="mr-2 h-4 w-4" />
-              Sair
-            </Button>
-          </div>
-        </div>
-      </header>
+      <Header />
 
       {/* Main Content */}
       <main className="container py-8">
@@ -139,14 +126,28 @@ export default function Dashboard() {
             <CardHeader>
               <CardTitle>Ações Rápidas</CardTitle>
               <CardDescription>
-                Comece criando seu primeiro combinado
+                {canCreateAgreements
+                  ? "Comece criando seu primeiro combinado"
+                  : "Acesse seus combinados recebidos"}
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <Button className="w-full sm:w-auto">
-                <Plus className="mr-2 h-4 w-4" />
-                Criar Novo Combinado
+            <CardContent className="flex flex-wrap gap-4">
+              <Button onClick={() => navigate("/agreements")}>
+                <FileText className="mr-2 h-4 w-4" />
+                Ver Meus Combinados
               </Button>
+              {canCreateAgreements && (
+                <Button onClick={() => navigate("/agreements/new")}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Criar Novo Combinado
+                </Button>
+              )}
+              {isColaborador && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <AlertCircle className="h-4 w-4" />
+                  Colaboradores podem visualizar e responder combinados
+                </div>
+              )}
             </CardContent>
           </Card>
 
