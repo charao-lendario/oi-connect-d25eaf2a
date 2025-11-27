@@ -59,11 +59,11 @@ export default function AgreementsIndex() {
               </p>
             </div>
             {canCreateAgreements && (
-              <Button onClick={() => navigate("/agreements/new")}>
-                <Plus className="mr-2 h-4 w-4" />
-                Novo Combinado
-              </Button>
-            )}
+               <Button onClick={() => { console.log("[AgreementsIndex] Novo Combinado click"); navigate("/agreements/new"); }}>
+                 <Plus className="mr-2 h-4 w-4" />
+                 Novo Combinado
+               </Button>
+             )}
           </div>
 
           {/* Empty State */}
@@ -77,12 +77,12 @@ export default function AgreementsIndex() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {canCreateAgreements && (
-                <Button onClick={() => navigate("/agreements/new")}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Criar Primeiro Combinado
-                </Button>
-              )}
+               {canCreateAgreements && (
+                 <Button onClick={() => { console.log("[AgreementsIndex] Criar Primeiro Combinado click"); navigate("/agreements/new"); }}>
+                   <Plus className="mr-2 h-4 w-4" />
+                   Criar Primeiro Combinado
+                 </Button>
+               )}
             </CardContent>
           </Card>
         </div>
