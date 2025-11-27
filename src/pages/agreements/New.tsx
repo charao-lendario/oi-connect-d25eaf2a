@@ -119,7 +119,13 @@ export default function NewAgreement() {
         .select()
         .single();
 
-      if (agreementError) throw agreementError;
+      if (agreementError || !agreement) {
+        console.error("Erro ao criar registro em agreements:", agreementError);
+        throw new Error(
+          agreementError?.message ||
+            "Falha ao criar o combinado na tabela agreements."
+        );
+      }
 
       // Adicionar participantes
       const participantsData = data.participants.map((participantId) => ({
@@ -132,8 +138,13 @@ export default function NewAgreement() {
         .from("agreement_participants")
         .insert(participantsData);
 
-      if (participantsError) throw participantsError;
-
+      if (participantsError) {
+        console.error("Erro ao adicionar participantes:", participantsError);
+        throw new Error(
+          participantsError?.message ||
+            "Falha ao adicionar participantes ao combinado."
+        );
+      }
       toast.success("Combinado criado com sucesso!");
       navigate("/agreements");
     } catch (error: any) {
