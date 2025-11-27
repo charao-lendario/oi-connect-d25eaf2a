@@ -104,9 +104,21 @@ export default function NewAgreement() {
   const onSubmit = async (data: FormData) => {
     if (!user) return;
 
+    console.log("[NewAgreement] submit started", { data, userId: user.id });
+
     setSubmitting(true);
     try {
       // 1. Criar o combinado
+      console.log("[NewAgreement] inserting agreement payload", {
+        title: data.title,
+        meeting_date: data.meeting_date,
+        due_date: data.due_date,
+        priority: data.priority,
+        category: data.category,
+        tags: data.tags,
+        creator_id: user.id,
+      });
+
       const { data: agreement, error: agreementError } = await supabase
         .from("agreements")
         .insert({
@@ -123,6 +135,11 @@ export default function NewAgreement() {
         .select()
         .single();
 
+      console.log("[NewAgreement] insert agreements result", {
+        agreement,
+        agreementError,
+      });
+
       if (agreementError || !agreement) {
         throw new Error(agreementError?.message || "Falha ao criar o combinado");
       }
@@ -134,9 +151,15 @@ export default function NewAgreement() {
         status: "PENDING" as const,
       }));
 
+      console.log("[NewAgreement] inserting participants", participantsData);
+
       const { error: participantsError } = await supabase
         .from("agreement_participants")
         .insert(participantsData);
+
+      console.log("[NewAgreement] participants insert result", {
+        participantsError,
+      });
 
       if (participantsError) {
         throw new Error(participantsError?.message || "Falha ao adicionar participantes");
@@ -150,9 +173,15 @@ export default function NewAgreement() {
           order_index: item.order_index,
         }));
 
+        console.log("[NewAgreement] inserting checklist items", checklistData);
+
         const { error: checklistError } = await supabase
           .from("checklist_items")
           .insert(checklistData);
+
+        console.log("[NewAgreement] checklist insert result", {
+          checklistError,
+        });
 
         if (checklistError) {
           console.error("Erro ao adicionar checklist:", checklistError);
@@ -163,6 +192,8 @@ export default function NewAgreement() {
 
       // 4. Upload de anexos (se houver)
       if (attachments.length > 0) {
+        console.log("[NewAgreement] uploading attachments", attachments);
+
         for (const attachment of attachments) {
           const fileExt = attachment.file.name.split('.').pop();
           const fileName = `${user.id}/${agreement.id}/${crypto.randomUUID()}.${fileExt}`;
@@ -171,19 +202,28 @@ export default function NewAgreement() {
             .from('agreement-attachments')
             .upload(fileName, attachment.file);
 
+          console.log("[NewAgreement] upload result", {
+            fileName,
+            uploadError,
+          });
+
           if (uploadError) {
             console.error("Erro ao fazer upload:", uploadError);
             continue;
           }
 
           // Registrar anexo na tabela
-          await supabase.from('attachments').insert({
+          const { error: attachmentInsertError } = await supabase.from('attachments').insert({
             agreement_id: agreement.id,
             storage_path: fileName,
             file_name: attachment.file.name,
             file_size: attachment.file.size,
             mime_type: attachment.file.type,
             uploaded_by_id: user.id,
+          });
+
+          console.log("[NewAgreement] attachment insert result", {
+            attachmentInsertError,
           });
         }
       }
@@ -198,7 +238,15 @@ export default function NewAgreement() {
         related_id: agreement.id,
       }));
 
-      await supabase.from('notifications').insert(notifications);
+      console.log("[NewAgreement] inserting notifications", notifications);
+
+      const { error: notificationsError } = await supabase
+        .from('notifications')
+        .insert(notifications);
+
+      console.log("[NewAgreement] notifications insert result", {
+        notificationsError,
+      });
 
       toast.success("Combinado criado com sucesso!");
       navigate("/agreements");
