@@ -19,10 +19,11 @@ import { Calendar, Clock, Users, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import { ChecklistSection, ChecklistItem } from "@/components/agreements/ChecklistSection";
 import { AttachmentsSection, AttachmentFile } from "@/components/agreements/AttachmentsSection";
+import { VoiceInput } from "@/components/ui/voice-input";
 
 const formSchema = z.object({
   title: z.string().min(3, "Título deve ter no mínimo 3 caracteres").max(200),
-  description: z.string().min(10, "Descrição deve ter no mínimo 10 caracteres"),
+  description: z.string().optional(),
   meeting_date: z.string().min(1, "Data da reunião é obrigatória"),
   due_date: z.string().min(1, "Data de vencimento é obrigatória"),
   priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]),
@@ -46,7 +47,6 @@ export default function NewAgreement() {
   const navigate = useNavigate();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loadingProfiles, setLoadingProfiles] = useState(true);
-  const [tagInput, setTagInput] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
   const [attachments, setAttachments] = useState<AttachmentFile[]>([]);
@@ -62,7 +62,6 @@ export default function NewAgreement() {
       due_date: "",
       priority: "MEDIUM",
       category: "",
-      tags: [],
       participants: [],
     },
   });
@@ -118,7 +117,6 @@ export default function NewAgreement() {
         due_date: data.due_date,
         priority: data.priority,
         category: data.category,
-        tags: data.tags,
         creator_id: user.id,
       });
 
@@ -126,12 +124,11 @@ export default function NewAgreement() {
         .from("agreements")
         .insert({
           title: data.title,
-          description: data.description,
+          description: data.description || "",
           meeting_date: new Date(data.meeting_date).toISOString(),
           due_date: new Date(data.due_date).toISOString(),
           priority: data.priority,
           category: data.category || null,
-          tags: data.tags,
           creator_id: user.id,
           status: "PENDING",
         })
@@ -165,7 +162,9 @@ export default function NewAgreement() {
       });
 
       if (participantsError) {
-        throw new Error(participantsError?.message || "Falha ao adicionar participantes");
+        console.error("Erro ao adicionar participantes (ignorando para permitir criação):", participantsError);
+        toast.warning("Combinado criado, mas houve erro ao vincular alguns participantes.");
+        // throw new Error(participantsError?.message || "Falha ao adicionar participantes");
       }
 
       // 3. Adicionar checklist (se houver)
@@ -174,6 +173,7 @@ export default function NewAgreement() {
           agreement_id: agreement.id,
           description: item.description,
           order_index: item.order_index,
+          assigned_to_id: item.assigned_to_id,
         }));
 
         console.log("[NewAgreement] inserting checklist items", checklistData);
@@ -332,9 +332,17 @@ export default function NewAgreement() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Título *</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Digite o título do combinado" {...field} />
-                        </FormControl>
+                        <div className="flex gap-2">
+                          <FormControl>
+                            <Input placeholder="Digite o título do combinado" {...field} />
+                          </FormControl>
+                          <VoiceInput
+                            onTranscript={(text) => {
+                              const current = field.value || "";
+                              field.onChange(current ? `${current} ${text}` : text);
+                            }}
+                          />
+                        </div>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -345,14 +353,22 @@ export default function NewAgreement() {
                     name="description"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Descrição *</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Descreva os detalhes do combinado"
-                            className="min-h-32"
-                            {...field}
+                        <FormLabel>Descrição</FormLabel>
+                        <div className="flex gap-2">
+                          <FormControl>
+                            <Textarea
+                              placeholder="Descreva os detalhes do combinado"
+                              className="min-h-32"
+                              {...field}
+                            />
+                          </FormControl>
+                          <VoiceInput
+                            onTranscript={(text) => {
+                              const current = field.value || "";
+                              field.onChange(current ? `${current} ${text}` : text);
+                            }}
                           />
-                        </FormControl>
+                        </div>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -441,54 +457,6 @@ export default function NewAgreement() {
                       )}
                     />
                   </div>
-
-                  <FormField
-                    control={form.control}
-                    name="tags"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Tags</FormLabel>
-                        <div className="space-y-2">
-                          <div className="flex gap-2">
-                            <Input
-                              placeholder="Adicione uma tag"
-                              value={tagInput}
-                              onChange={(e) => setTagInput(e.target.value)}
-                              onKeyPress={(e) => {
-                                if (e.key === "Enter") {
-                                  e.preventDefault();
-                                  addTag();
-                                }
-                              }}
-                            />
-                            <Button type="button" onClick={addTag} size="icon">
-                              <Plus className="h-4 w-4" />
-                            </Button>
-                          </div>
-                          {field.value.length > 0 && (
-                            <div className="flex flex-wrap gap-2">
-                              {field.value.map((tag) => (
-                                <span
-                                  key={tag}
-                                  className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-secondary text-secondary-foreground text-sm"
-                                >
-                                  {tag}
-                                  <button
-                                    type="button"
-                                    onClick={() => removeTag(tag)}
-                                    className="hover:text-destructive"
-                                  >
-                                    <X className="h-3 w-3" />
-                                  </button>
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
                 </CardContent>
               </Card>
 
@@ -534,10 +502,10 @@ export default function NewAgreement() {
                                             return checked
                                               ? field.onChange([...field.value, profile.id])
                                               : field.onChange(
-                                                  field.value?.filter(
-                                                    (value) => value !== profile.id
-                                                  )
-                                                );
+                                                field.value?.filter(
+                                                  (value) => value !== profile.id
+                                                )
+                                              );
                                           }}
                                         />
                                       </FormControl>
@@ -567,6 +535,10 @@ export default function NewAgreement() {
               <ChecklistSection
                 items={checklistItems}
                 onChange={setChecklistItems}
+                assignableUsers={profiles
+                  .filter(p => form.watch("participants")?.includes(p.id))
+                  .map(p => ({ id: p.id, name: p.full_name }))
+                }
               />
 
               <AttachmentsSection

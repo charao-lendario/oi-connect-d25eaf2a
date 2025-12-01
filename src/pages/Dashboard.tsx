@@ -1,29 +1,82 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
+import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/layout/Header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, CheckSquare, FileText, AlertCircle } from "lucide-react";
+import { Plus, CheckSquare, FileText, AlertCircle, Calendar, XCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { Badge } from "@/components/ui/badge";
 
 export default function Dashboard() {
   const { user, loading: authLoading } = useAuth();
   const { canCreateAgreements, isColaborador, loading: profileLoading } = useProfile();
   const navigate = useNavigate();
-  
+
   // Hook para notificações em tempo real
   useRealtimeNotifications(user?.id);
-  
-  const loading = authLoading || profileLoading;
+
+  const { data: agreements, isLoading: agreementsLoading } = useQuery({
+    queryKey: ["dashboard-agreements", user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+
+      // 1. Buscar IDs dos combinados onde sou participante
+      const { data: participations } = await supabase
+        .from('agreement_participants')
+        .select('agreement_id, status')
+        .eq('user_id', user.id);
+
+      const participationIds = participations?.map(p => p.agreement_id) || [];
+      const participationStatusMap = new Map(participations?.map(p => [p.agreement_id, p.status]));
+
+      // 2. Construir a query de combinados
+      let query = supabase
+        .from("agreements")
+        .select(`
+          *,
+          agreement_participants (
+            count
+          )
+        `)
+        .order("created_at", { ascending: false });
+
+      // Filtro: Sou criador OU Sou participante
+      if (participationIds.length > 0) {
+        query = query.or(`creator_id.eq.${user.id},id.in.(${participationIds.join(',')})`);
+      } else {
+        query = query.eq('creator_id', user.id);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error("Erro ao buscar combinados:", error);
+        throw error;
+      }
+
+      // Anexar meu status aos combinados
+      return data.map(agreement => ({
+        ...agreement,
+        my_status: participationStatusMap.get(agreement.id)
+      }));
+    },
+    enabled: !!user,
+  });
+
+  const loading = authLoading || profileLoading || agreementsLoading;
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!authLoading && !user) {
       navigate("/auth");
     }
-  }, [user, loading, navigate]);
+  }, [user, authLoading, navigate]);
 
   if (loading) {
     return (
@@ -45,6 +98,41 @@ export default function Dashboard() {
 
   if (!user) return null;
 
+  // Calcular estatísticas
+  const pendingCount = agreements?.filter(a => a.status === 'PENDING').length || 0;
+  const inProgressCount = agreements?.filter(a => a.status === 'IN_PROGRESS' || a.status === 'ACCEPTED').length || 0;
+  const completedCount = agreements?.filter(a => a.status === 'COMPLETED').length || 0;
+  const rejectedCount = agreements?.filter(a => a.status === 'REJECTED' || a.my_status === 'REJECTED').length || 0;
+
+  const totalAgreements = agreements?.length || 0;
+  const completionRate = totalAgreements > 0
+    ? Math.round((completedCount / totalAgreements) * 100)
+    : 0;
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "COMPLETED": return "Concluído";
+      case "IN_PROGRESS": return "Em Andamento";
+      case "PENDING": return "Pendente";
+      case "OVERDUE": return "Atrasado";
+      case "DRAFT": return "Rascunho";
+      case "ACCEPTED": return "Aceito";
+      case "REJECTED": return "Rejeitado";
+      case "CANCELLED": return "Cancelado";
+      default: return status;
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "COMPLETED": return "bg-green-500/10 text-green-500 hover:bg-green-500/20";
+      case "IN_PROGRESS": return "bg-blue-500/10 text-blue-500 hover:bg-blue-500/20";
+      case "PENDING": return "bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20";
+      case "OVERDUE": return "bg-red-500/10 text-red-500 hover:bg-red-500/20";
+      default: return "bg-secondary text-secondary-foreground";
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-secondary/5 to-primary/5">
       <Header />
@@ -63,16 +151,16 @@ export default function Dashboard() {
           </div>
 
           {/* Stats Cards */}
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">
                   Pendentes
                 </CardTitle>
-                <FileText className="h-4 w-4 text-muted-foreground" />
+                <AlertCircle className="h-4 w-4 text-yellow-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">0</div>
+                <div className="text-2xl font-bold">{pendingCount}</div>
                 <p className="text-xs text-muted-foreground">
                   Aguardando resposta
                 </p>
@@ -82,14 +170,14 @@ export default function Dashboard() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">
-                  Aceitos
+                  Em Andamento
                 </CardTitle>
-                <CheckSquare className="h-4 w-4 text-muted-foreground" />
+                <FileText className="h-4 w-4 text-blue-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">0</div>
+                <div className="text-2xl font-bold">{inProgressCount}</div>
                 <p className="text-xs text-muted-foreground">
-                  Em andamento
+                  Combinados ativos
                 </p>
               </CardContent>
             </Card>
@@ -99,12 +187,27 @@ export default function Dashboard() {
                 <CardTitle className="text-sm font-medium">
                   Concluídos
                 </CardTitle>
-                <CheckSquare className="h-4 w-4 text-muted-foreground" />
+                <CheckSquare className="h-4 w-4 text-green-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">0</div>
+                <div className="text-2xl font-bold">{completedCount}</div>
                 <p className="text-xs text-muted-foreground">
-                  Este mês
+                  Total finalizado
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Rejeitados
+                </CardTitle>
+                <XCircle className="h-4 w-4 text-red-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{rejectedCount}</div>
+                <p className="text-xs text-muted-foreground">
+                  Recusados
                 </p>
               </CardContent>
             </Card>
@@ -117,9 +220,9 @@ export default function Dashboard() {
                 <CheckSquare className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">0%</div>
+                <div className="text-2xl font-bold">{completionRate}%</div>
                 <p className="text-xs text-muted-foreground">
-                  Últimos 30 dias
+                  Do total de combinados
                 </p>
               </CardContent>
             </Card>
@@ -146,12 +249,6 @@ export default function Dashboard() {
                   Criar Novo Combinado
                 </Button>
               )}
-              {isColaborador && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <AlertCircle className="h-4 w-4" />
-                  Colaboradores podem visualizar e responder combinados
-                </div>
-              )}
             </CardContent>
           </Card>
 
@@ -164,9 +261,34 @@ export default function Dashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-12 text-muted-foreground">
-                Nenhum combinado encontrado. Crie seu primeiro!
-              </div>
+              {agreements && agreements.length > 0 ? (
+                <div className="space-y-4">
+                  {agreements.slice(0, 5).map((agreement: any) => (
+                    <div
+                      key={agreement.id}
+                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-secondary/50 cursor-pointer transition-colors"
+                      onClick={() => navigate(`/agreements/${agreement.id}`)}
+                    >
+                      <div className="space-y-1">
+                        <p className="font-medium leading-none">{agreement.title}</p>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Calendar className="h-3 w-3" />
+                          <span>
+                            {format(new Date(agreement.created_at), "dd 'de' MMMM", { locale: ptBR })}
+                          </span>
+                        </div>
+                      </div>
+                      <Badge variant="secondary" className={getStatusColor(agreement.status)}>
+                        {getStatusLabel(agreement.status)}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  Nenhum combinado encontrado.
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

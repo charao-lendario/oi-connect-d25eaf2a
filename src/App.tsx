@@ -8,6 +8,8 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import AgreementsIndex from "./pages/agreements/Index";
 import NewAgreement from "./pages/agreements/New";
+import AgreementDetails from "./pages/agreements/Details";
+import Reports from "./pages/Reports";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +26,8 @@ const App = () => (
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/agreements" element={<AgreementsIndex />} />
           <Route path="/agreements/new" element={<NewAgreement />} />
+          <Route path="/agreements/:id" element={<AgreementDetails />} />
+          <Route path="/reports" element={<Reports />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

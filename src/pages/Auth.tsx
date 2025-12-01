@@ -12,11 +12,11 @@ import { Loader2 } from "lucide-react";
 export default function Auth() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  
+
   // Login state
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
-  
+
   // Signup state
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
@@ -80,25 +80,38 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-[#0F172A] p-4">
+      <Card className="w-full max-w-md bg-[#1E293B] border-slate-700 text-white shadow-xl">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">Sistema de Combinados</CardTitle>
-          <CardDescription>
+          <div className="flex justify-center mb-4">
+            <img src="/logo.png" alt="Logo" className="h-24 w-auto object-contain" />
+          </div>
+          <CardTitle className="text-2xl font-bold text-white">Sistema de Combinados</CardTitle>
+          <CardDescription className="text-slate-300">
             Gestão corporativa de compromissos e acordos
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="login" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">Entrar</TabsTrigger>
-              <TabsTrigger value="signup">Cadastrar</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 bg-slate-900 text-slate-400">
+              <TabsTrigger
+                value="login"
+                className="data-[state=active]:bg-[#F5C542] data-[state=active]:text-slate-900"
+              >
+                Entrar
+              </TabsTrigger>
+              <TabsTrigger
+                value="signup"
+                className="data-[state=active]:bg-[#F5C542] data-[state=active]:text-slate-900"
+              >
+                Cadastrar
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="login">
               <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="login-email">Email</Label>
+                  <Label htmlFor="login-email" className="text-slate-200">Email</Label>
                   <Input
                     id="login-email"
                     type="email"
@@ -106,10 +119,11 @@ export default function Auth() {
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
                     required
+                    className="bg-slate-900 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-[#F5C542]"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="login-password">Senha</Label>
+                  <Label htmlFor="login-password" className="text-slate-200">Senha</Label>
                   <Input
                     id="login-password"
                     type="password"
@@ -117,9 +131,14 @@ export default function Auth() {
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
                     required
+                    className="bg-slate-900 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-[#F5C542]"
                   />
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
+                <Button
+                  type="submit"
+                  className="w-full bg-[#F5C542] text-slate-900 hover:bg-[#F5C542]/90 font-semibold"
+                  disabled={loading}
+                >
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Entrar
                 </Button>
@@ -129,7 +148,7 @@ export default function Auth() {
             <TabsContent value="signup">
               <form onSubmit={handleSignup} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="signup-name">Nome Completo</Label>
+                  <Label htmlFor="signup-name" className="text-slate-200">Nome Completo</Label>
                   <Input
                     id="signup-name"
                     type="text"
@@ -137,10 +156,11 @@ export default function Auth() {
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     required
+                    className="bg-slate-900 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-[#F5C542]"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signup-position">Cargo</Label>
+                  <Label htmlFor="signup-position" className="text-slate-200">Cargo</Label>
                   <Input
                     id="signup-position"
                     type="text"
@@ -148,10 +168,11 @@ export default function Auth() {
                     value={position}
                     onChange={(e) => setPosition(e.target.value)}
                     required
+                    className="bg-slate-900 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-[#F5C542]"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signup-email">Email</Label>
+                  <Label htmlFor="signup-email" className="text-slate-200">Email</Label>
                   <Input
                     id="signup-email"
                     type="email"
@@ -159,10 +180,11 @@ export default function Auth() {
                     value={signupEmail}
                     onChange={(e) => setSignupEmail(e.target.value)}
                     required
+                    className="bg-slate-900 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-[#F5C542]"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signup-password">Senha</Label>
+                  <Label htmlFor="signup-password" className="text-slate-200">Senha</Label>
                   <Input
                     id="signup-password"
                     type="password"
@@ -171,9 +193,14 @@ export default function Auth() {
                     onChange={(e) => setSignupPassword(e.target.value)}
                     required
                     minLength={6}
+                    className="bg-slate-900 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-[#F5C542]"
                   />
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
+                <Button
+                  type="submit"
+                  className="w-full bg-[#F5C542] text-slate-900 hover:bg-[#F5C542]/90 font-semibold"
+                  disabled={loading}
+                >
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Criar Conta
                 </Button>
