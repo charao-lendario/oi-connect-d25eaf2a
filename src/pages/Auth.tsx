@@ -80,38 +80,43 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0F172A] p-4">
-      <Card className="w-full max-w-md bg-[#1E293B] border-slate-700 text-white shadow-xl">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4 relative overflow-hidden">
+      {/* Background decoration */}
+      <div className="absolute inset-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-background to-background pointer-events-none" />
+
+      <Card className="w-full max-w-md bg-card/50 backdrop-blur-xl border-border/50 text-card-foreground shadow-2xl relative z-10">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <img src="/logo.png" alt="Logo" className="h-24 w-auto object-contain" />
+            <img src="/logo.png" alt="Logo" className="h-24 w-auto object-contain drop-shadow-lg" />
           </div>
-          <CardTitle className="text-2xl font-bold text-white">Sistema de Combinados</CardTitle>
-          <CardDescription className="text-slate-300">
+          <CardTitle className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/70">
+            Sistema de Combinados
+          </CardTitle>
+          <CardDescription className="text-muted-foreground text-lg">
             Gestão corporativa de compromissos e acordos
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="login" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 bg-slate-900 text-slate-400">
+            <TabsList className="grid w-full grid-cols-2 bg-muted/50 p-1">
               <TabsTrigger
                 value="login"
-                className="data-[state=active]:bg-[#F5C542] data-[state=active]:text-slate-900"
+                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all duration-300"
               >
                 Entrar
               </TabsTrigger>
               <TabsTrigger
                 value="signup"
-                className="data-[state=active]:bg-[#F5C542] data-[state=active]:text-slate-900"
+                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all duration-300"
               >
                 Cadastrar
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="login">
+            <TabsContent value="login" className="mt-6">
               <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="login-email" className="text-slate-200">Email</Label>
+                  <Label htmlFor="login-email">Email</Label>
                   <Input
                     id="login-email"
                     type="email"
@@ -119,11 +124,11 @@ export default function Auth() {
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
                     required
-                    className="bg-slate-900 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-[#F5C542]"
+                    className="bg-background/50 border-input focus-visible:ring-primary"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="login-password" className="text-slate-200">Senha</Label>
+                  <Label htmlFor="login-password">Senha</Label>
                   <Input
                     id="login-password"
                     type="password"
@@ -131,12 +136,12 @@ export default function Auth() {
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
                     required
-                    className="bg-slate-900 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-[#F5C542]"
+                    className="bg-background/50 border-input focus-visible:ring-primary"
                   />
                 </div>
                 <Button
                   type="submit"
-                  className="w-full bg-[#F5C542] text-slate-900 hover:bg-[#F5C542]/90 font-semibold"
+                  className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-bold shadow-lg shadow-primary/20 transition-all duration-300 hover:scale-[1.02]"
                   disabled={loading}
                 >
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -145,10 +150,10 @@ export default function Auth() {
               </form>
             </TabsContent>
 
-            <TabsContent value="signup">
+            <TabsContent value="signup" className="mt-6">
               <form onSubmit={handleSignup} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="signup-name" className="text-slate-200">Nome Completo</Label>
+                  <Label htmlFor="signup-name">Nome Completo</Label>
                   <Input
                     id="signup-name"
                     type="text"
@@ -156,11 +161,11 @@ export default function Auth() {
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     required
-                    className="bg-slate-900 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-[#F5C542]"
+                    className="bg-background/50 border-input focus-visible:ring-primary"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signup-position" className="text-slate-200">Cargo</Label>
+                  <Label htmlFor="signup-position">Cargo</Label>
                   <Input
                     id="signup-position"
                     type="text"
@@ -168,11 +173,11 @@ export default function Auth() {
                     value={position}
                     onChange={(e) => setPosition(e.target.value)}
                     required
-                    className="bg-slate-900 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-[#F5C542]"
+                    className="bg-background/50 border-input focus-visible:ring-primary"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signup-email" className="text-slate-200">Email</Label>
+                  <Label htmlFor="signup-email">Email</Label>
                   <Input
                     id="signup-email"
                     type="email"
@@ -180,11 +185,11 @@ export default function Auth() {
                     value={signupEmail}
                     onChange={(e) => setSignupEmail(e.target.value)}
                     required
-                    className="bg-slate-900 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-[#F5C542]"
+                    className="bg-background/50 border-input focus-visible:ring-primary"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signup-password" className="text-slate-200">Senha</Label>
+                  <Label htmlFor="signup-password">Senha</Label>
                   <Input
                     id="signup-password"
                     type="password"
@@ -193,12 +198,12 @@ export default function Auth() {
                     onChange={(e) => setSignupPassword(e.target.value)}
                     required
                     minLength={6}
-                    className="bg-slate-900 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-[#F5C542]"
+                    className="bg-background/50 border-input focus-visible:ring-primary"
                   />
                 </div>
                 <Button
                   type="submit"
-                  className="w-full bg-[#F5C542] text-slate-900 hover:bg-[#F5C542]/90 font-semibold"
+                  className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-bold shadow-lg shadow-primary/20 transition-all duration-300 hover:scale-[1.02]"
                   disabled={loading}
                 >
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

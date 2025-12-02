@@ -141,18 +141,18 @@ export default function Dashboard() {
       <main className="container py-8">
         <div className="space-y-8">
           {/* Welcome Section */}
-          <div>
-            <h2 className="text-3xl font-bold tracking-tight">
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <h2 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">
               Bem-vindo de volta!
             </h2>
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground mt-1">
               Aqui está um resumo dos seus combinados
             </p>
           </div>
 
           {/* Stats Cards */}
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5">
-            <Card>
+            <Card className="hover:shadow-lg transition-all duration-300 hover:scale-[1.02] border-l-4 border-l-yellow-500 bg-card/50 backdrop-blur-sm">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">
                   Pendentes
@@ -167,7 +167,7 @@ export default function Dashboard() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="hover:shadow-lg transition-all duration-300 hover:scale-[1.02] border-l-4 border-l-blue-500 bg-card/50 backdrop-blur-sm">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">
                   Em Andamento
@@ -182,7 +182,7 @@ export default function Dashboard() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="hover:shadow-lg transition-all duration-300 hover:scale-[1.02] border-l-4 border-l-green-500 bg-card/50 backdrop-blur-sm">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">
                   Concluídos
@@ -197,7 +197,7 @@ export default function Dashboard() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="hover:shadow-lg transition-all duration-300 hover:scale-[1.02] border-l-4 border-l-red-500 bg-card/50 backdrop-blur-sm">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">
                   Rejeitados
@@ -212,12 +212,12 @@ export default function Dashboard() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="hover:shadow-lg transition-all duration-300 hover:scale-[1.02] border-l-4 border-l-primary bg-card/50 backdrop-blur-sm">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">
                   Taxa de Conclusão
                 </CardTitle>
-                <CheckSquare className="h-4 w-4 text-muted-foreground" />
+                <CheckSquare className="h-4 w-4 text-primary" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{completionRate}%</div>
@@ -229,7 +229,7 @@ export default function Dashboard() {
           </div>
 
           {/* Quick Actions */}
-          <Card>
+          <Card className="bg-card/50 backdrop-blur-sm border-primary/20">
             <CardHeader>
               <CardTitle>Ações Rápidas</CardTitle>
               <CardDescription>
@@ -239,12 +239,12 @@ export default function Dashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-wrap gap-4">
-              <Button onClick={() => navigate("/agreements")}>
+              <Button onClick={() => navigate("/agreements")} variant="outline" className="hover:bg-secondary hover:text-secondary-foreground transition-colors">
                 <FileText className="mr-2 h-4 w-4" />
                 Ver Meus Combinados
               </Button>
               {canCreateAgreements && (
-                <Button onClick={() => navigate("/agreements/new")}>
+                <Button onClick={() => navigate("/agreements/new")} className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-md hover:shadow-lg transition-all">
                   <Plus className="mr-2 h-4 w-4" />
                   Criar Novo Combinado
                 </Button>
@@ -253,7 +253,7 @@ export default function Dashboard() {
           </Card>
 
           {/* Recent Agreements */}
-          <Card>
+          <Card className="bg-card/50 backdrop-blur-sm">
             <CardHeader>
               <CardTitle>Combinados Recentes</CardTitle>
               <CardDescription>
@@ -266,11 +266,11 @@ export default function Dashboard() {
                   {agreements.slice(0, 5).map((agreement: any) => (
                     <div
                       key={agreement.id}
-                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-secondary/50 cursor-pointer transition-colors"
+                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-secondary/50 cursor-pointer transition-all duration-200 hover:border-primary/50 group"
                       onClick={() => navigate(`/agreements/${agreement.id}`)}
                     >
                       <div className="space-y-1">
-                        <p className="font-medium leading-none">{agreement.title}</p>
+                        <p className="font-medium leading-none group-hover:text-primary transition-colors">{agreement.title}</p>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Calendar className="h-3 w-3" />
                           <span>
@@ -278,7 +278,7 @@ export default function Dashboard() {
                           </span>
                         </div>
                       </div>
-                      <Badge variant="secondary" className={getStatusColor(agreement.status)}>
+                      <Badge variant="secondary" className={`${getStatusColor(agreement.status)} transition-transform group-hover:scale-105`}>
                         {getStatusLabel(agreement.status)}
                       </Badge>
                     </div>
