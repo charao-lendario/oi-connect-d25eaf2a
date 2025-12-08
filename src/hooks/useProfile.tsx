@@ -10,6 +10,7 @@ interface Profile {
   avatar_url: string | null;
   email?: string;
   workspace_id?: string;
+  workspace_name?: string;
 }
 
 interface UserRole {
@@ -33,10 +34,10 @@ export function useProfile() {
     setLoading(true);
     const fetchProfile = async () => {
       try {
-        // Fetch profile
+        // Fetch profile with workspace details
         const { data: profileData, error: profileError } = await supabase
           .from("profiles")
-          .select("*")
+          .select("*, workspaces(name)")
           .eq("id", user.id)
           .single();
 
@@ -45,6 +46,7 @@ export function useProfile() {
         setProfile({
           ...profileData,
           email: user.email,
+          workspace_name: profileData.workspaces?.name
         });
 
         // Fetch roles

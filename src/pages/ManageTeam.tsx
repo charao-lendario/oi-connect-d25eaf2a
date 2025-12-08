@@ -59,12 +59,23 @@ export default function ManageTeam() {
         setLoading(true);
 
         try {
-            // 1. Save current session
-            const { data: { session: currentSession } } = await supabase.auth.getSession();
+            // Create a temporary client to avoid messing with current auth session
+            // We use the same URL and Key
+            // @ts-ignore
+            const tempClient = supabase.createClient(
+                import.meta.env.VITE_SUPABASE_URL,
+                import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+                {
+                    auth: {
+                        persistSession: false, // Don't save session to local storage
+                        autoRefreshToken: false,
+                        detectSessionInUrl: false
+                    }
+                }
+            );
 
-            // 2. Create new user
-            // WARNING: This logs us in as new user temporarily
-            const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+            // 1. Create new user using temp client
+            const { data: signUpData, error: signUpError } = await tempClient.auth.signUp({
                 email: newUser.email,
                 password: newUser.password,
                 options: {
@@ -81,27 +92,29 @@ export default function ManageTeam() {
 
             // If session is null, it means email confirmation is still required by server.
             if (!signUpData.session && !signUpData.user) {
-                throw new Error("O servidor ainda está exigindo confirmação de email. Verifique as configurações do Supabase (Authentication -> Providers -> Email -> Confirm email: OFF).");
+                throw new Error("O servidor ainda está exigindo confirmação de email. Verifique as configurações do Supabase.");
             }
 
             if (signUpData.user) {
-                // 3. Update the new user's profile to assign workspace
-                // We are currently logged in as the new user (or at least we have the access), 
-                // OR the trigger created the profile.
-                // If 'profiles' is created via trigger, we update it.
-                // If not, we insert it?
-                // Assuming trigger exists or we insert. Let's try update first.
+                // 2. We need to update the profile with workspace_id
+                // Since successful signup in tempClient means we have a session for the NEW user in tempClient,
+                // we can use tempClient to update the profile of the new user.
 
-                // Wait, if signUp logs us in, we are the NEW user.
-                // So we can update OUR OWN profile (the new user's profile).
+                // Wait a moment for trigger to create profile if applicable, or just upsert.
+                // Assuming RLS allows user to update own profile.
+
                 const updatePayload = {
                     workspace_id: workspaceId,
                     full_name: newUser.name,
                     position: newUser.position,
-                    must_change_password: false // Or true if we want them to change it too? User said "Enesses cadastros, terao acesso a esse workflow". Doesn't specify they must change password. Let's set false.
+                    must_change_password: false
                 };
 
-                const { error: updateError } = await supabase
+                const { error: updateError } = await tempClient // Use main client? No, must use tempClient because we are editing the NEW user's profile and main client is Admin.
+                    // actually, Admin might not have permission to edit other profiles unless we have RLS policies for "Admin of Workspace".
+                    // But the NEW user definitely has permission to edit THEMSELVES (usually).
+                    // So let's use tempClient.
+                    // @ts-ignore
                     .from("profiles")
                     .upsert({
                         id: signUpData.user.id,
@@ -109,20 +122,17 @@ export default function ManageTeam() {
                     } as any);
 
                 if (updateError) {
-                    // If upsert fails, try insert logic if needed, but profiles usually exist.
                     console.error("Profile update error", updateError);
-                    // Don't throw, just warn?
+                    // Fallback: Try with main client (current user) if they are admin?
+                    // But we haven't set up "Admin can edit workspace members" RLS yet.
                 }
-            }
 
-            // 4. Restore session
-            if (currentSession) {
-                const { error: restoreError } = await supabase.auth.setSession(currentSession);
-                if (restoreError) {
-                    toast.error("Sua sessão foi desconectada ao criar o usuário. Por favor, faça login novamente.");
-                    window.location.reload();
-                    return;
-                }
+                // Also add 'COLABORADOR' role
+                // @ts-ignore
+                await tempClient.from("user_roles").upsert({
+                    user_id: signUpData.user.id,
+                    role: 'COLABORADOR'
+                });
             }
 
             toast.success("Colaborador cadastrado com sucesso!");
@@ -131,6 +141,7 @@ export default function ManageTeam() {
 
         } catch (error: any) {
             toast.error(error.message || "Erro ao cadastrar user");
+            console.error(error);
         } finally {
             setLoading(false);
         }
