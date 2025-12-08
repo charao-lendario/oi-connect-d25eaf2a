@@ -88,20 +88,21 @@ export default function NewAgreement() {
 
   const fetchProfiles = async () => {
     try {
-      // @ts-ignore
-      if (!userProfile?.workspace_id) {
-        setLoadingProfiles(false);
-        return;
-      }
+      console.log("[NewAgreement] fetching profiles from team_members...");
 
-      // @ts-ignore
+      // We rely on RLS to filter by workspace, so we don't strictly need the workspace_id in the query
+      // This helps if userProfile state is slightly stale but DB RLS is correct.
       const { data, error } = await supabase
         .from("team_members")
-        .select("user_id, name, position")
-        .eq("workspace_id", userProfile.workspace_id)
+        .select("user_id, name, position, workspace_id")
         .order("name");
 
-      if (error) throw error;
+      if (error) {
+        console.error("[NewAgreement] fetch error", error);
+        throw error;
+      }
+
+      console.log("[NewAgreement] fetched members:", data);
 
       const mappedProfiles: Profile[] = (data || []).map((tm: any) => ({
         id: tm.user_id,
@@ -110,7 +111,10 @@ export default function NewAgreement() {
         department: null
       }));
 
-      setProfiles(mappedProfiles);
+      // Filter out duplicate IDs if any (though DB constraint should prevent it)
+      const uniqueProfiles = mappedProfiles.filter((v, i, a) => a.findIndex(t => (t.id === v.id)) === i);
+
+      setProfiles(uniqueProfiles);
     } catch (error) {
       console.error("Erro ao buscar perfis:", error);
       toast.error("Erro ao carregar lista de usuários");
