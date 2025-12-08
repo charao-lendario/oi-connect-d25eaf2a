@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useProfile } from "@/hooks/useProfile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -50,8 +51,14 @@ export default function ManageTeam() {
         }
     };
 
+    const { isAdmin } = useProfile();
+
     const handleCreateUser = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!isAdmin) {
+            toast.error("Apenas administradores podem cadastrar novos colaboradores.");
+            return;
+        }
         if (!workspaceId) {
             toast.error("Você não está em um workspace.");
             return;
