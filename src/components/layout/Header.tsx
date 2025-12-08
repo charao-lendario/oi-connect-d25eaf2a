@@ -160,15 +160,17 @@ export function Header() {
               <ListTodo className="h-4 w-4" />
               Meus Combinados
             </Button>
-            <Button
-              variant={location.pathname === "/reports" ? "secondary" : "ghost"}
-              size="sm"
-              onClick={() => navigate("/reports")}
-              className="gap-2"
-            >
-              <FileBarChart className="h-4 w-4" />
-              Relatórios
-            </Button>
+            {profile?.workspace_name !== "Mutumilk Laticínios" && (
+              <Button
+                variant={location.pathname === "/reports" ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => navigate("/reports")}
+                className="gap-2"
+              >
+                <FileBarChart className="h-4 w-4" />
+                Relatórios
+              </Button>
+            )}
           </nav>
         </div>
 
