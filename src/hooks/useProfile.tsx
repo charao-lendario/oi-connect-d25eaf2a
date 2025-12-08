@@ -9,6 +9,7 @@ interface Profile {
   department: string | null;
   avatar_url: string | null;
   email?: string;
+  workspace_id?: string;
 }
 
 interface UserRole {

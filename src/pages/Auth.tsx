@@ -36,8 +36,21 @@ export default function Auth() {
       if (error) throw error;
 
       if (data.user) {
-        toast.success("Login realizado com sucesso!");
-        navigate("/dashboard");
+        // Check if user must change password
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("must_change_password")
+          .eq("id", data.user.id)
+          .single();
+
+        // @ts-ignore
+        if (profile?.must_change_password) {
+          toast.info("Você precisa alterar sua senha no primeiro acesso.");
+          navigate("/change-password");
+        } else {
+          toast.success("Login realizado com sucesso!");
+          navigate("/dashboard");
+        }
       }
     } catch (error: any) {
       toast.error(error.message || "Erro ao fazer login");

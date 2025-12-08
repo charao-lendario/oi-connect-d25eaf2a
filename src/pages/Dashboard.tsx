@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 
 export default function Dashboard() {
   const { user, loading: authLoading } = useAuth();
-  const { canCreateAgreements, isColaborador, loading: profileLoading } = useProfile();
+  const { canCreateAgreements, isColaborador, isAdmin, loading: profileLoading } = useProfile();
   const navigate = useNavigate();
 
   // Hook para notificações em tempo real
@@ -247,6 +247,12 @@ export default function Dashboard() {
                 <Button onClick={() => navigate("/agreements/new")} className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-md hover:shadow-lg transition-all">
                   <Plus className="mr-2 h-4 w-4" />
                   Criar Novo Combinado
+                </Button>
+              )}
+              {isAdmin && (
+                <Button onClick={() => navigate("/team")} variant="secondary" className="shadow-md hover:shadow-lg transition-all">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Gerenciar Equipe
                 </Button>
               )}
             </CardContent>

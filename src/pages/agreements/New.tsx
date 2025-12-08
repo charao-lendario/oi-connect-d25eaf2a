@@ -43,13 +43,14 @@ interface Profile {
 
 export default function NewAgreement() {
   const { user, loading: authLoading } = useAuth();
-  const { canCreateAgreements, loading: profileLoading } = useProfile();
+  const { canCreateAgreements, loading: profileLoading, profile: userProfile } = useProfile();
   const navigate = useNavigate();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loadingProfiles, setLoadingProfiles] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
   const [attachments, setAttachments] = useState<AttachmentFile[]>([]);
+  const [tagInput, setTagInput] = useState("");
 
   console.log("[NewAgreement] render", { user, canCreateAgreements, authLoading, profileLoading });
 
@@ -80,18 +81,26 @@ export default function NewAgreement() {
   }, [canCreateAgreements, profileLoading, authLoading, navigate, user]);
 
   useEffect(() => {
-    if (user) {
+    if (user && userProfile) {
       fetchProfiles();
     }
-  }, [user]);
+  }, [user, userProfile]);
 
   const fetchProfiles = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("profiles")
         .select("id, full_name, position, department")
         .eq("is_active", true)
         .order("full_name");
+
+      // @ts-ignore
+      if (userProfile?.workspace_id) {
+        // @ts-ignore
+        query = query.eq("workspace_id", userProfile.workspace_id);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setProfiles(data || []);
