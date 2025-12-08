@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { createClient } from "@supabase/supabase-js";
 import { useProfile } from "@/hooks/useProfile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -102,9 +103,8 @@ export default function ManageTeam() {
 
         try {
             // Create a temporary client to avoid messing with current auth session
-            // We use the same URL and Key
-            // @ts-ignore
-            const tempClient = supabase.createClient(
+            // THIS MUST USE THE IMPORTED FUNCTION, NOT THE INSTANCE
+            const tempClient = createClient(
                 import.meta.env.VITE_SUPABASE_URL,
                 import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
                 {
