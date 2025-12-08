@@ -12,36 +12,54 @@ export default function SetupMutumilk() {
         try {
             // 1. Sign Up Admin
             // WARNING: This will fail if user already exists.
+            let userId;
             const email = "carol.martins@mutumilklaticinios.com.br";
             const password = "mutumilk";
 
-            let userId;
+            // 0. Check if already logged in as this user
+            const { data: { user: currentUser } } = await supabase.auth.getUser();
 
-            // Try login first to see if exists
-            const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
-                email,
-                password
-            });
-
-            if (loginData.user) {
-                setStatus("User already exists. Logging in...");
-                userId = loginData.user.id;
+            if (currentUser?.email === email) {
+                setStatus("Already logged in. Proceeding...");
+                userId = currentUser.id;
             } else {
-                setStatus("Creating user...");
-                const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+                // Not logged in (or logged in as someone else).
+                // Try login first to see if exists
+                const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
                     email,
-                    password,
-                    options: {
-                        data: {
-                            full_name: "Admin Mutumilk",
-                            position: "Administrador"
-                        }
-                    }
+                    password
                 });
 
-                if (signUpError) throw signUpError;
-                if (!signUpData.user) throw new Error("No user returned");
-                userId = signUpData.user.id;
+                if (loginData.user) {
+                    setStatus("Logging in...");
+                    userId = loginData.user.id;
+                } else {
+                    // Login failed.
+                    // If error is "Invalid login credentials", user might not exist OR password changed.
+                    // We'll try to signup. 
+                    // Note: If user exists but password changed, SignUp will fail with UserAlreadyRegistered
+                    setStatus("Creating user...");
+                    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+                        email,
+                        password,
+                        options: {
+                            data: {
+                                full_name: "Admin Mutumilk",
+                                position: "Administrador"
+                            }
+                        }
+                    });
+
+                    if (signUpError) {
+                        // Simplify error message for user
+                        if (signUpError.message.includes("already registered")) {
+                            throw new Error("User exists but password does not match default 'mutumilk'. Please login manually.");
+                        }
+                        throw signUpError;
+                    }
+                    if (!signUpData.user) throw new Error("No user returned");
+                    userId = signUpData.user.id;
+                }
             }
 
             // 2. Get Workspace ID
