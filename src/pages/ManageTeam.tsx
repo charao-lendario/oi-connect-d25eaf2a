@@ -28,7 +28,6 @@ export default function ManageTeam() {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
 
-            // Get current user's workspace
             const { data: profile } = await supabase
                 .from("profiles")
                 .select("workspace_id")
@@ -42,11 +41,9 @@ export default function ManageTeam() {
                 // @ts-ignore
                 await fetchUsers(profile.workspace_id);
             } else {
-                // Check fallback for specific admins or attempt to find by slug if applicable
                 const email = user.email?.toLowerCase();
                 if (email === 'carol.martins@mutumilklaticinios.com.br') {
-                    // Try to find the workspace explicitly
-                    const { data: ws, error: wsError } = await supabase
+                    const { data: ws } = await supabase
                         .from('workspaces')
                         .select('id')
                         .eq('slug', 'mutumilk')
@@ -55,16 +52,10 @@ export default function ManageTeam() {
                     if (ws) {
                         setWorkspaceId(ws.id);
                         await fetchUsers(ws.id);
-
-                        // Fix profile connection permanently
-                        const { error: updateError } = await supabase
+                        await supabase
                             .from('profiles')
                             .update({ workspace_id: ws.id } as any)
                             .eq('id', user.id);
-
-                        if (!updateError) toast.success("Perfil vinculado ao workspace automaticamente.");
-                    } else {
-                        console.error("Could not find mutumilk workspace", wsError);
                     }
                 }
             }
@@ -74,49 +65,44 @@ export default function ManageTeam() {
     };
 
     const fetchUsers = async (wsId: string) => {
-        const { data: team } = await supabase
-            .from("profiles")
+        const { data: members, error } = await supabase
+            .from("team_members")
             .select("*")
-            .eq("workspace_id", wsId); // @ts-ignore
+            .eq("workspace_id", wsId)
+            .order('name');
 
-        if (team) setUsers(team);
+        if (error) console.error("Error fetching members", error);
+        if (members) setUsers(members);
     };
 
     const handleCreateUser = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        // Ensure isAdmin check passes (either via hook or email check if hook lags)
-        // We trust the hook mostly, but if user just became admin, hook might need refresh.
-        // Assuming hook is accurate or we rely on server RLS eventually.
-        // But for UI feedback:
         if (!isAdmin) {
             toast.error("Apenas administradores podem cadastrar novos colaboradores.");
             return;
         }
 
         if (!workspaceId) {
-            // Try one last fetch or just error
             toast.error("Você não está em um workspace. Tente recarregar a página.");
             return;
         }
         setLoading(true);
 
         try {
-            // Create a temporary client to avoid messing with current auth session
-            // THIS MUST USE THE IMPORTED FUNCTION, NOT THE INSTANCE
             const tempClient = createClient(
                 import.meta.env.VITE_SUPABASE_URL,
                 import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
                 {
                     auth: {
-                        persistSession: false, // Don't save session to local storage
+                        persistSession: false,
                         autoRefreshToken: false,
                         detectSessionInUrl: false
                     }
                 }
             );
 
-            // 1. Create new user using temp client
+            // 1. Create new user in Auth
             const { data: signUpData, error: signUpError } = await tempClient.auth.signUp({
                 email: newUser.email,
                 password: newUser.password,
@@ -125,21 +111,18 @@ export default function ManageTeam() {
                         full_name: newUser.name,
                         position: newUser.position,
                     },
-                    // This forces no email confirmation requirement if server allows it
                     emailRedirectTo: window.location.origin
                 },
             });
 
             if (signUpError) throw signUpError;
 
-            // If session is null, it means email confirmation is still required by server.
             if (!signUpData.session && !signUpData.user) {
-                throw new Error("O servidor ainda está exigindo confirmação de email. Verifique as configurações do Supabase.");
+                throw new Error("O servidor ainda está exigindo confirmação de email.");
             }
 
             if (signUpData.user) {
-                // 2. We need to update the profile with workspace_id
-
+                // 2. Update Profile (via tempClient - user updating themselves)
                 const updatePayload = {
                     workspace_id: workspaceId,
                     full_name: newUser.name,
@@ -148,57 +131,62 @@ export default function ManageTeam() {
                 };
 
                 // @ts-ignore
-                const { error: updateError } = await tempClient
-                    .from("profiles")
-                    .upsert({
-                        id: signUpData.user.id,
-                        ...updatePayload
-                    } as any);
+                await tempClient.from("profiles").upsert({
+                    id: signUpData.user.id,
+                    ...updatePayload
+                } as any);
 
-                if (updateError) {
-                    console.error("Profile update error", updateError);
-                }
-
-                // Also add 'COLABORADOR' role
                 // @ts-ignore
                 await tempClient.from("user_roles").upsert({
                     user_id: signUpData.user.id,
                     role: 'COLABORADOR'
                 });
+
+                // 3. Add to Team Members Table (via Main Admin Client)
+                const { error: teamError } = await supabase
+                    .from("team_members")
+                    .insert({
+                        workspace_id: workspaceId,
+                        user_id: signUpData.user.id,
+                        email: newUser.email,
+                        name: newUser.name,
+                        role: 'COLABORADOR',
+                        position: newUser.position
+                    });
+
+                if (teamError) console.error("Team members insert error", teamError);
             }
 
             toast.success("Colaborador cadastrado com sucesso!");
             setNewUser({ name: "", email: "", password: "", position: "" });
-            // Refresh list
             if (workspaceId) fetchUsers(workspaceId);
 
         } catch (error: any) {
-            // Check for "User already registered" error
+            // Handle "User already registered" by recovering them
             if (error.message?.includes("already registered") || error.status === 400 || error.code === 'user_already_exists') {
                 try {
-                    // Try to link the existing user
-                    const { data: success, error: rpcError } = await supabase.rpc('add_user_to_workspace_by_email', {
+                    const { data: success, error: rpcError } = await supabase.rpc('add_user_to_workspace_v2', {
                         email_input: newUser.email,
-                        workspace_id_input: workspaceId
+                        workspace_id_input: workspaceId,
+                        name_input: newUser.name,
+                        position_input: newUser.position
                     });
 
                     if (success) {
-                        toast.success("O usuário já existia e foi vinculado ao seu workspace.");
+                        toast.success("O usuário já existia e foi vinculado ao seu workspace!");
                         setNewUser({ name: "", email: "", password: "", position: "" });
                         if (workspaceId) fetchUsers(workspaceId);
                         return;
                     } else if (rpcError) {
-                        console.error(rpcError);
-                        toast.error("Usuário já existe, mas erro ao vincular: " + rpcError.message);
+                        toast.error("Usuário existe mas falha ao vincular: " + rpcError.message);
                     } else {
-                        toast.error("Usuário já existe e não pôde ser encontrado para vinculação.");
+                        toast.error("Usuário existe e não pôde ser vinculado (não encontrado no auth).");
                     }
-                } catch (innerError) {
-                    console.error("RPC Error", innerError);
+                } catch (inner) {
+                    console.error(inner);
                 }
             } else {
                 toast.error(error.message || "Erro ao cadastrar user");
-                console.error(error);
             }
         } finally {
             setLoading(false);
@@ -275,24 +263,23 @@ export default function ManageTeam() {
                         </TableHeader>
                         <TableBody>
                             {users.map((user) => (
-                                <TableRow key={user.id}>
-                                    <TableCell>{user.full_name}</TableCell>
-                                    <TableCell>(Email via Auth)</TableCell>
+                                <TableRow key={user.user_id}>
+                                    <TableCell>{user.name}</TableCell>
+                                    <TableCell>{user.email}</TableCell>
                                     <TableCell>{user.position || "-"}</TableCell>
-                                    <TableCell>{user.is_active ? "Ativo" : "Inativo"}</TableCell>
+                                    <TableCell>Ativo</TableCell>
                                     <TableCell>
                                         <Button
                                             variant="destructive"
                                             size="sm"
                                             onClick={async () => {
                                                 if (confirm("Tem certeza que deseja remover este colaborador?")) {
-                                                    const { error } = await supabase
-                                                        .from("profiles")
-                                                        .update({ workspace_id: null, is_active: false } as any)
-                                                        .eq("id", user.id);
+                                                    const { data: success, error } = await supabase.rpc('remove_user_from_workspace', {
+                                                        target_user_id: user.user_id
+                                                    });
 
-                                                    if (error) {
-                                                        toast.error("Erro ao remover colaborador");
+                                                    if (error || !success) {
+                                                        toast.error("Erro ao remover colaborador: " + (error?.message || "Falha desconhecida"));
                                                     } else {
                                                         toast.success("Colaborador removido.");
                                                         if (workspaceId) fetchUsers(workspaceId);
@@ -313,7 +300,7 @@ export default function ManageTeam() {
                         </TableBody>
                     </Table>
                     <p className="text-sm text-muted-foreground mt-4">
-                        Nota: O email não é armazenado diretamente no perfil público por padrão, mas o login funcionará com o email cadastrado.
+                        Nota: A lista exibe membros ativos do workspace.
                     </p>
                 </CardContent>
             </Card>
