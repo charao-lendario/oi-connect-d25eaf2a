@@ -151,6 +151,7 @@ export default function NewAgreement() {
           category: data.category || null,
           creator_id: user.id,
           status: "PENDING",
+          workspace_id: userProfile?.workspace_id,
         })
         .select()
         .single();
