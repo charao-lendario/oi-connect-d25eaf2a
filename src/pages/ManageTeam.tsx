@@ -173,8 +173,33 @@ export default function ManageTeam() {
             if (workspaceId) fetchUsers(workspaceId);
 
         } catch (error: any) {
-            toast.error(error.message || "Erro ao cadastrar user");
-            console.error(error);
+            // Check for "User already registered" error
+            if (error.message?.includes("already registered") || error.status === 400 || error.code === 'user_already_exists') {
+                try {
+                    // Try to link the existing user
+                    const { data: success, error: rpcError } = await supabase.rpc('add_user_to_workspace_by_email', {
+                        email_input: newUser.email,
+                        workspace_id_input: workspaceId
+                    });
+
+                    if (success) {
+                        toast.success("O usuário já existia e foi vinculado ao seu workspace.");
+                        setNewUser({ name: "", email: "", password: "", position: "" });
+                        if (workspaceId) fetchUsers(workspaceId);
+                        return;
+                    } else if (rpcError) {
+                        console.error(rpcError);
+                        toast.error("Usuário já existe, mas erro ao vincular: " + rpcError.message);
+                    } else {
+                        toast.error("Usuário já existe e não pôde ser encontrado para vinculação.");
+                    }
+                } catch (innerError) {
+                    console.error("RPC Error", innerError);
+                }
+            } else {
+                toast.error(error.message || "Erro ao cadastrar user");
+                console.error(error);
+            }
         } finally {
             setLoading(false);
         }
