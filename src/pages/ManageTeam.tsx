@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Loader2, Plus } from "lucide-react";
+import { Loader2, Plus, ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export default function ManageTeam() {
     const [loading, setLoading] = useState(false);
@@ -15,6 +16,7 @@ export default function ManageTeam() {
     const [newUser, setNewUser] = useState({ name: "", email: "", password: "", position: "" });
     const [workspaceId, setWorkspaceId] = useState<string | null>(null);
     const { isAdmin } = useProfile();
+    const navigate = useNavigate();
 
     useEffect(() => {
         fetchWorkspaceAndUsers();
@@ -164,9 +166,16 @@ export default function ManageTeam() {
 
     return (
         <div className="p-6 space-y-6">
+            <div className="flex items-center gap-4">
+                <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")}>
+                    <ArrowLeft className="h-5 w-5" />
+                </Button>
+                <h1 className="text-2xl font-bold">Gestão de Equipe</h1>
+            </div>
+
             <Card>
                 <CardHeader>
-                    <CardTitle>Gerenciar Colaboradores</CardTitle>
+                    <CardTitle>Cadastrar Novo Colaborador</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleCreateUser} className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
