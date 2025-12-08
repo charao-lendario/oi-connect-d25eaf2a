@@ -88,22 +88,29 @@ export default function NewAgreement() {
 
   const fetchProfiles = async () => {
     try {
-      let query = supabase
-        .from("profiles")
-        .select("id, full_name, position, department")
-        .eq("is_active", true)
-        .order("full_name");
-
       // @ts-ignore
-      if (userProfile?.workspace_id) {
-        // @ts-ignore
-        query = query.eq("workspace_id", userProfile.workspace_id);
+      if (!userProfile?.workspace_id) {
+        setLoadingProfiles(false);
+        return;
       }
 
-      const { data, error } = await query;
+      // @ts-ignore
+      const { data, error } = await supabase
+        .from("team_members")
+        .select("user_id, name, position")
+        .eq("workspace_id", userProfile.workspace_id)
+        .order("name");
 
       if (error) throw error;
-      setProfiles(data || []);
+
+      const mappedProfiles: Profile[] = (data || []).map((tm: any) => ({
+        id: tm.user_id,
+        full_name: tm.name,
+        position: tm.position || "Colaborador",
+        department: null
+      }));
+
+      setProfiles(mappedProfiles);
     } catch (error) {
       console.error("Erro ao buscar perfis:", error);
       toast.error("Erro ao carregar lista de usuários");
