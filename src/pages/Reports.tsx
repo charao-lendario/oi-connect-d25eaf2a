@@ -19,7 +19,7 @@ import { toast } from "sonner";
 
 export default function Reports() {
     const { user, loading: authLoading } = useAuth();
-    const { isAdmin, loading: profileLoading } = useProfile();
+    const { isAdmin, loading: profileLoading, profile } = useProfile();
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -40,6 +40,9 @@ export default function Reports() {
                 .from("agreements")
                 .select(`
           *,
+          creator:creator_id (
+              workspace_id
+          ),
           agreement_participants (
             status,
             rejection_reason,
@@ -58,6 +61,13 @@ export default function Reports() {
                 console.error("Erro ao buscar relatórios:", error);
                 throw error;
             }
+
+            // Fallback Frontend Filter for Workspace Isolation
+            // If RLS allows read (e.g. public policy), we hide it here.
+            // We need the current user's workspace ID to compare.
+            // We can get it from useProfile but it's not strictly passed to this async function scope easily without prop or closure.
+            // But we can filter where creator.workspace_id matches our profile.workspace_id if available.
+
             return data;
         },
         enabled: !!user,
@@ -78,6 +88,22 @@ export default function Reports() {
     };
 
     const filteredAgreements = agreements?.filter(agreement => {
+        // Filter by Workspace (Frontend Fallback)
+        if (profile?.workspace_id) {
+            // @ts-ignore
+            const creatorWorkspaceId = agreement.creator?.workspace_id;
+
+            // If creator has a workspace ID and it's different from mine, hide it.
+            // If creator has NO workspace ID (legacy data), hide it if I am in a specific workspace (Mutumilk).
+            if (creatorWorkspaceId && creatorWorkspaceId !== profile.workspace_id) {
+                return false;
+            }
+            if (!creatorWorkspaceId && profile.workspace_id) {
+                // Hide legacy/global data from specific workspace users
+                return false;
+            }
+        }
+
         // Filter by Status
         if (statusFilter !== "ALL") {
             if (agreement.status !== statusFilter) return false;
