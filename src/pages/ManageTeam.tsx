@@ -72,10 +72,17 @@ export default function ManageTeam() {
                         full_name: newUser.name,
                         position: newUser.position,
                     },
+                    // This forces no email confirmation requirement if server allows it
+                    emailRedirectTo: window.location.origin
                 },
             });
 
             if (signUpError) throw signUpError;
+
+            // If session is null, it means email confirmation is still required by server.
+            if (!signUpData.session && !signUpData.user) {
+                throw new Error("O servidor ainda está exigindo confirmação de email. Verifique as configurações do Supabase (Authentication -> Providers -> Email -> Confirm email: OFF).");
+            }
 
             if (signUpData.user) {
                 // 3. Update the new user's profile to assign workspace
