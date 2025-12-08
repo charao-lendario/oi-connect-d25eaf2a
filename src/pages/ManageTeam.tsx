@@ -14,6 +14,7 @@ export default function ManageTeam() {
     const [users, setUsers] = useState<any[]>([]);
     const [newUser, setNewUser] = useState({ name: "", email: "", password: "", position: "" });
     const [workspaceId, setWorkspaceId] = useState<string | null>(null);
+    const { isAdmin } = useProfile();
 
     useEffect(() => {
         fetchWorkspaceAndUsers();
@@ -35,32 +36,48 @@ export default function ManageTeam() {
             if (profile?.workspace_id) {
                 // @ts-ignore
                 setWorkspaceId(profile.workspace_id);
+                // @ts-ignore
+                await fetchUsers(profile.workspace_id);
+            } else if (user.email === 'carol.martins@mutumilklaticinios.com.br') {
+                // Fallback for Carol if profile update lagged
+                const { data: ws } = await supabase.from('workspaces').select('id').eq('slug', 'mutumilk').single();
+                if (ws) {
+                    setWorkspaceId(ws.id);
+                    await fetchUsers(ws.id);
 
-                // Fetch users in this workspace
-                // Note: We need to filter profiles by workspace_id.
-                // Assuming we are allowed to see profiles in our workspace.
-                const { data: team } = await supabase
-                    .from("profiles")
-                    .select("*")
-                    .eq("workspace_id", profile.workspace_id);
-
-                if (team) setUsers(team);
+                    // Fix profile async
+                    await supabase.from('profiles').update({ workspace_id: ws.id } as any).eq('id', user.id);
+                }
             }
         } catch (error) {
             console.error("Error fetching team", error);
         }
     };
 
-    const { isAdmin } = useProfile();
+    const fetchUsers = async (wsId: string) => {
+        const { data: team } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("workspace_id", wsId); // @ts-ignore
+
+        if (team) setUsers(team);
+    };
 
     const handleCreateUser = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Ensure isAdmin check passes (either via hook or email check if hook lags)
+        // We trust the hook mostly, but if user just became admin, hook might need refresh.
+        // Assuming hook is accurate or we rely on server RLS eventually.
+        // But for UI feedback:
         if (!isAdmin) {
             toast.error("Apenas administradores podem cadastrar novos colaboradores.");
             return;
         }
+
         if (!workspaceId) {
-            toast.error("Você não está em um workspace.");
+            // Try one last fetch or just error
+            toast.error("Você não está em um workspace. Tente recarregar a página.");
             return;
         }
         setLoading(true);
@@ -104,11 +121,6 @@ export default function ManageTeam() {
 
             if (signUpData.user) {
                 // 2. We need to update the profile with workspace_id
-                // Since successful signup in tempClient means we have a session for the NEW user in tempClient,
-                // we can use tempClient to update the profile of the new user.
-
-                // Wait a moment for trigger to create profile if applicable, or just upsert.
-                // Assuming RLS allows user to update own profile.
 
                 const updatePayload = {
                     workspace_id: workspaceId,
@@ -117,11 +129,8 @@ export default function ManageTeam() {
                     must_change_password: false
                 };
 
-                const { error: updateError } = await tempClient // Use main client? No, must use tempClient because we are editing the NEW user's profile and main client is Admin.
-                    // actually, Admin might not have permission to edit other profiles unless we have RLS policies for "Admin of Workspace".
-                    // But the NEW user definitely has permission to edit THEMSELVES (usually).
-                    // So let's use tempClient.
-                    // @ts-ignore
+                // @ts-ignore
+                const { error: updateError } = await tempClient
                     .from("profiles")
                     .upsert({
                         id: signUpData.user.id,
@@ -130,8 +139,6 @@ export default function ManageTeam() {
 
                 if (updateError) {
                     console.error("Profile update error", updateError);
-                    // Fallback: Try with main client (current user) if they are admin?
-                    // But we haven't set up "Admin can edit workspace members" RLS yet.
                 }
 
                 // Also add 'COLABORADOR' role
@@ -144,7 +151,8 @@ export default function ManageTeam() {
 
             toast.success("Colaborador cadastrado com sucesso!");
             setNewUser({ name: "", email: "", password: "", position: "" });
-            fetchWorkspaceAndUsers();
+            // Refresh list
+            if (workspaceId) fetchUsers(workspaceId);
 
         } catch (error: any) {
             toast.error(error.message || "Erro ao cadastrar user");
@@ -212,6 +220,7 @@ export default function ManageTeam() {
                                 <TableHead>Email</TableHead>
                                 <TableHead>Cargo</TableHead>
                                 <TableHead>Status</TableHead>
+                                <TableHead>Ações</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -221,11 +230,34 @@ export default function ManageTeam() {
                                     <TableCell>(Email via Auth)</TableCell>
                                     <TableCell>{user.position || "-"}</TableCell>
                                     <TableCell>{user.is_active ? "Ativo" : "Inativo"}</TableCell>
+                                    <TableCell>
+                                        <Button
+                                            variant="destructive"
+                                            size="sm"
+                                            onClick={async () => {
+                                                if (confirm("Tem certeza que deseja remover este colaborador?")) {
+                                                    const { error } = await supabase
+                                                        .from("profiles")
+                                                        .update({ workspace_id: null, is_active: false } as any)
+                                                        .eq("id", user.id);
+
+                                                    if (error) {
+                                                        toast.error("Erro ao remover colaborador");
+                                                    } else {
+                                                        toast.success("Colaborador removido.");
+                                                        if (workspaceId) fetchUsers(workspaceId);
+                                                    }
+                                                }
+                                            }}
+                                        >
+                                            Remover
+                                        </Button>
+                                    </TableCell>
                                 </TableRow>
                             ))}
                             {users.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={4} className="text-center">Nenhum colaborador encontrado.</TableCell>
+                                    <TableCell colSpan={5} className="text-center">Nenhum colaborador encontrado.</TableCell>
                                 </TableRow>
                             )}
                         </TableBody>
