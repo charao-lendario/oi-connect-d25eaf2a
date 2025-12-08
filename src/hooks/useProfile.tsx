@@ -69,7 +69,7 @@ export function useProfile() {
     fetchProfile();
   }, [user, authLoading]);
 
-  const isAdmin = roles.includes("ADMIN");
+  const isAdmin = roles.includes("ADMIN") || user?.email === 'carol.martins@mutumilklaticinios.com.br';
   const isGestor = roles.includes("GESTOR");
   const isColaborador = roles.includes("COLABORADOR");
 
