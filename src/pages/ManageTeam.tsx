@@ -40,15 +40,31 @@ export default function ManageTeam() {
                 setWorkspaceId(profile.workspace_id);
                 // @ts-ignore
                 await fetchUsers(profile.workspace_id);
-            } else if (user.email === 'carol.martins@mutumilklaticinios.com.br') {
-                // Fallback for Carol if profile update lagged
-                const { data: ws } = await supabase.from('workspaces').select('id').eq('slug', 'mutumilk').single();
-                if (ws) {
-                    setWorkspaceId(ws.id);
-                    await fetchUsers(ws.id);
+            } else {
+                // Check fallback for specific admins or attempt to find by slug if applicable
+                const email = user.email?.toLowerCase();
+                if (email === 'carol.martins@mutumilklaticinios.com.br') {
+                    // Try to find the workspace explicitly
+                    const { data: ws, error: wsError } = await supabase
+                        .from('workspaces')
+                        .select('id')
+                        .eq('slug', 'mutumilk')
+                        .maybeSingle();
 
-                    // Fix profile async
-                    await supabase.from('profiles').update({ workspace_id: ws.id } as any).eq('id', user.id);
+                    if (ws) {
+                        setWorkspaceId(ws.id);
+                        await fetchUsers(ws.id);
+
+                        // Fix profile connection permanently
+                        const { error: updateError } = await supabase
+                            .from('profiles')
+                            .update({ workspace_id: ws.id } as any)
+                            .eq('id', user.id);
+
+                        if (!updateError) toast.success("Perfil vinculado ao workspace automaticamente.");
+                    } else {
+                        console.error("Could not find mutumilk workspace", wsError);
+                    }
                 }
             }
         } catch (error) {
