@@ -1,4 +1,5 @@
 import { Toaster } from "@/components/ui/toaster";
+import { AuthProvider } from "@/contexts/AuthContext";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -23,19 +24,21 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/change-password" element={<ChangePassword />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/team" element={<ManageTeam />} />
-          <Route path="/agreements" element={<AgreementsIndex />} />
-          <Route path="/agreements/new" element={<NewAgreement />} />
-          <Route path="/agreements/:id" element={<AgreementDetails />} />
-          <Route path="/reports" element={<Reports />} />
-          <Route path="/setup-mutumilk" element={<SetupMutumilk />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <AuthProvider>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/change-password" element={<ChangePassword />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/team" element={<ManageTeam />} />
+            <Route path="/agreements" element={<AgreementsIndex />} />
+            <Route path="/agreements/new" element={<NewAgreement />} />
+            <Route path="/agreements/:id" element={<AgreementDetails />} />
+            <Route path="/reports" element={<Reports />} />
+            <Route path="/setup-mutumilk" element={<SetupMutumilk />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
